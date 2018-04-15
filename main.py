@@ -1,4 +1,3 @@
-#password is 'allyn'
 from flask import Flask, request, redirect, render_template
 from flask_sqlalchemy import SQLAlchemy
 
@@ -11,12 +10,15 @@ db = SQLAlchemy(app)
 class Blog(db.Model):
 
     id = db.Column(db.Integer, primary_key = True)
-    title = db.Column(db.String(120))
+    title = db.Column(db.String(120), unique=True)
     body = db.Column(db.Text)
 
     def __init__(self, title, body):
         self.title = title
         self.body = body
+
+    def __repr__(self):
+        return '<Blog %r>' % self.title
 
 
 @app.route('/')
@@ -26,22 +28,32 @@ def index():
 @app.route('/blog', methods=['GET', 'POST'])
 def blog():
 
-    title_error = ''    
-    content_error = ''
     if request.method == 'POST':
+        title_error = ''    
+        content_error = ''
         blog_name = request.form['name']
         blog_content = request.form['content']
         if blog_name == '':
             title_error = "Please give your entry a title!"
         if blog_content == '':
             content_error = "Empty posts aren't posts. Please give me content."
-        if blog_name == '' or blog_content == '' :    
+        if title_error != '' or content_error != '' :    
             return redirect('/newpost?title_error=' + title_error + '&name=' + blog_name + '&content_error=' + content_error + '&content=' + blog_content)
 
         new_blog = Blog(blog_name, blog_content)
         db.session.add(new_blog)
         db.session.commit()
+        blog = Blog.query.filter_by(title=blog_name).first()
+        blog_id = str(blog.id)
+        return redirect('/blog?id=' + blog_id)
     
+    if request.method == 'GET':
+        if 'id' in request.args:
+            blog_id = request.args.get('id')
+            blog = Blog.query.get(blog_id)
+            return render_template('posts.html', title=blog.title, body=blog.body)
+        
+
     posts = Blog.query.all()
     return render_template('blogs.html', title="Build-A-Blog!", posts=posts)
 
