@@ -10,11 +10,25 @@
         </style>
     </head>
 <body>
+    <header><p>
+        {% if session['username'] %}
+        Logged in as {{username}}
+
+        {% else %}
+
+        Please log in <a href="/login">here!</a>
+
+        {% endif %}
+
+
+    </p></header>
     <nav>
         <a href="/blog">Main Blog Page</a>  |
         <a href="/newpost">Create a New Entry</a>  |
     </nav>
 
+    
+    <!--flash message somewhere-->
     {% block content %}
     {% endblock %}
 
