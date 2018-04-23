@@ -51,20 +51,31 @@ def index():
     users = User.query.all()
     return render_template('index.html', users=users)
     
+@app.route('/cheater')
+def cheater():
+    posts = Blog.query.all()
+    return render_template('cheater.html', posts=posts)
 
 @app.route('/blog', methods=['GET', 'POST'])
 def blog():
 
-    #username = User.query.filter_by(username=username).first()
-
     if request.method == 'GET':
+        if 'user' in request.args:
+            user_id = request.args.get('user')
+            user = User.query.get(user_id)
+            posts = Blog.query.filter_by(owner_id=user_id).all()
+            return render_template('singleUser.html', username=user.username, posts=posts)
+            #render blogs, but filter "posts" by user_id
+        
         if 'id' in request.args:
             blog_id = request.args.get('id')
             blog = Blog.query.get(blog_id)
-            return render_template('posts.html', title=blog.title, body=blog.body)
+            user = User.query.get(blog.owner_id)
+            return render_template('posts.html', title=blog.title, body=blog.body, user=user)
+        
         else:
             posts = Blog.query.all()
-            return render_template('blogs.html', title="Build-A-Blog!", posts=posts)
+            return render_template('blogs.html', title="Blogzzz!", posts=posts)
     if request.method == 'POST':
         title_error = ''    
         body_error = ''
@@ -74,7 +85,7 @@ def blog():
 @app.route('/newpost', methods=['GET', 'POST'])
 def new_post():
     
-    username = User.query.filter_by(username = "allyn").first()
+    username = User.query.filter_by(username=session['username']).first()
     
     if request.method == 'GET':
         title = request.args.get('title')
@@ -166,7 +177,7 @@ def login():
         if user:
             if user.password == password:
                 session['username'] = username
-                flash("Logged in")
+                flash("Logged in as " + session['username'])
                 return redirect('/blog')
             else:
                 flash('User password incorrect', 'error')
