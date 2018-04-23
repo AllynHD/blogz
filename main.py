@@ -40,18 +40,22 @@ class User(db.Model):
         return '<User %r>' % self.username
 
 
-#@app.before_request
-#def require_login():
- #   allowed_routes = ['login', 'signup']
-  #  if request.endpoint not in allowed_routes and 'username' not in session:
-   #     return redirect('/login')
+@app.before_request
+def require_login():
+    allowed_routes = ['login', 'blog', 'signup', 'index']
+    if request.endpoint not in allowed_routes and 'username' not in session:
+        return redirect('/login')
 
 @app.route('/')
-def kick():
-    return redirect('/blog')
+def index():
+    users = User.query.all()
+    return render_template('index.html', users=users)
+    
 
 @app.route('/blog', methods=['GET', 'POST'])
 def blog():
+
+    #username = User.query.filter_by(username=username).first()
 
     if request.method == 'GET':
         if 'id' in request.args:
@@ -61,20 +65,12 @@ def blog():
         else:
             posts = Blog.query.all()
             return render_template('blogs.html', title="Build-A-Blog!", posts=posts)
-    
-    username = User.query.filter_by(username=username).first()
-
     if request.method == 'POST':
         title_error = ''    
         body_error = ''
         blog_title = request.form['title']
         blog_body = request.form['body']
         
-
-        
-    
-    
-
 @app.route('/newpost', methods=['GET', 'POST'])
 def new_post():
     
@@ -112,41 +108,52 @@ def new_post():
 @app.route('/signup', methods = ['GET', 'POST'])
 def signup():
     if request.method == 'POST':
+        #makes sure needed variables have values
         username = request.form['username']
         password = request.form['password']
         verify = request.form['verify']
         user_error = ''
         pw_error = ''
         ver_error = ''
-        
+        divert = False
+        #performs validation for username, password for signup
         if username.isalpha() == False:
-            user_error = "Username should be only alphabetic characters"
+            divert=True
+            flash("Username should be only alphabetic characters", "error")
+        if len(username) < 3:
+            divert=True
+            flash("Username too short. 3 characters or more, please.", "error")
         if username == '':
-            user_error = "Username, ergo sum. Or, 'Please enter a username.'"
+            divert=True            
+            flash("Username, ergo sum. Or, 'Please enter a username.'", "error")
         if len(password) < 3 or len(password) > 20 or " " in password:
-            pw_error = "Password must be between 3 and 20 characters, and no spaces."
+            divert=True
+            flash("Password must be between 3 and 20 characters, and no spaces.", "error")
         if password == '':
-            pw_error = "Please enter a Password!"
+            divert=True
+            flash("Please enter a Password!", "error")
         if password != verify:
-            ver_error = "Those passwords didn't match."
+            divert=True
+            flash("Those passwords didn't match.", "error")
         if verify == '':
-            ver_error = "I think you forgot to verify your password, bruh..."
-        if user_error or pw_error or ver_error:
-            user_name = username
-            username = ''
-            return render_template('signup.html', username=username, user_name=user_name, user_error=user_error, pw_error=pw_error, ver_error=ver_error)
+            divert=True
+            flash("I think you forgot to verify your password, bruh...", "error")
+        if divert: #if any error exists, have them try to sign up again.
+            #how to not say "logged in as __" if no username
+            return render_template('signup.html')
+        
+        
         existing_user = User.query.filter_by(username=username).first()
         if not existing_user:
             new_user = User(username, password)
             db.session.add(new_user)
             db.session.commit()
             session['username'] = username
-            return redirect('/blog')
+            return redirect('/newpost')
         else:
             flash('User already exists', 'error')
             return render_template('signup.html')
-    else:
-        return render_template('signup.html')
+    return render_template('signup.html')
 
 
 
@@ -156,23 +163,21 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username = username).first()
-        if user and user.password == password:
-            session['username'] = username
-            flash("Logged in")
-            return redirect('/blog')
+        if user:
+            if user.password == password:
+                session['username'] = username
+                flash("Logged in")
+                return redirect('/blog')
+            else:
+                flash('User password incorrect', 'error')
         else:
-            flash('User password incorrect, or user does not exist', 'error')
+            flash('User does not exist', 'error')
     return render_template('login.html')
 
-@app.route('/index')
-def index():
-    pass
-
-@app.route('/logout', methods=['POST'])
+@app.route('/logout')
 def logout():
-    #delete session['email']
-    #redirect to /blog
-    pass
+    del session['username']
+    return redirect('/blog')
 
 
 if __name__ == '__main__':
